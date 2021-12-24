@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional
 from copy import deepcopy as dp
+from functools import lru_cache
 
-if True:
+if False:
     Filename = "Day23/input.txt"
 elif True:
     Filename = "Day23/sample.txt"
@@ -15,12 +16,16 @@ class casa:
     primeiro: Optional[str]
     segundo: Optional[str]
 
+
 @dataclass
 class novaCasa:
     primeiro: Optional[str]
     segundo: Optional[str]
     terceiro: Optional[str]
     quarto: Optional[str]
+
+    def __hash__(self) -> int:
+        return hash((self.primeiro, self.segundo, self.terceiro, self.quarto))
 
 
 mapCasa = {
@@ -91,6 +96,9 @@ class move:
     origin: str
     destiny: str
     distance: int
+
+    def __hash__(self) -> int:
+        return hash((self.origin, self.destiny, self.distance))
 
 
 scores = set({})
@@ -262,7 +270,7 @@ def novoWin(casas):
             return False
     return True
 
-
+@lru_cache(maxsize=None)
 def novoValidMoves(corredor, casas):
     moves = []
     for idx, casa in enumerate(casas):
@@ -352,8 +360,9 @@ def checkValidMove(corredor, origin, destiny):
             return False
     return True
 
-def recursiveGame2(corredor, casas, score, moveTrace):
-    global minScore
+@lru_cache(maxsize=None)
+def recursiveGame2(corredor, casas, score):
+    global minScore, moveTrace
     if novoWin(casas):
         if score < minScore:
             minScore = score
@@ -361,7 +370,6 @@ def recursiveGame2(corredor, casas, score, moveTrace):
             printGame(corredor, casas)
             print(moveTrace)
         return
-
     moves = novoValidMoves(corredor, casas)
     if len(moveTrace) <= 2:
             print(moveTrace)
@@ -369,59 +377,65 @@ def recursiveGame2(corredor, casas, score, moveTrace):
     for move in moves:
         if score + move.distance >= minScore:
             continue
-        newCorredor = dp(corredor)
-        newCasas = dp(casas)
-        if isinstance(move.origin, int):
-            el, newCorredor[move.origin] = newCorredor[move.origin], None
-            casa = newCasas[mapCasa[move.destiny[0]]]
-            if move.destiny[1] == "1":
-                casa.primeiro = el
-            elif move.destiny[1] == "2":
-                casa.segundo = el
-            elif move.destiny[1] == "3":
-                casa.terceiro = el
-            else:
-                casa.quarto = el
-            newCasas[mapCasa[move.destiny[0]]] = casa
-        elif isinstance(move.destiny, int):
-            casa = newCasas[mapCasa[move.origin[0]]]
-            if move.origin[1] == "1":
-                el, casa.primeiro = casa.primeiro, None
-            elif move.origin[1] == "2":
-                el, casa.segundo = casa.segundo, None
-            elif move.origin[1] == "3":
-                el, casa.terceiro = casa.terceiro, None
-            else:
-                el, casa.quarto = casa.quarto, None
-            newCorredor[move.destiny] = el
-            newCasas[mapCasa[move.origin[0]]] = casa
-        else:
-            casaOrigem = newCasas[mapCasa[move.origin[0]]]
-            if move.origin[1] == "1":
-                el, casaOrigem.primeiro = casaOrigem.primeiro, None
-            elif move.origin[1] == "2":
-                el, casaOrigem.segundo = casaOrigem.segundo, None
-            elif move.origin[1] == "3":
-                el, casaOrigem.terceiro = casaOrigem.terceiro, None
-            else:
-                el, casaOrigem.quarto = casaOrigem.quarto, None
-            newCasas[mapCasa[move.origin[0]]] = casaOrigem
-            casaDestino = newCasas[mapCasa[move.destiny[0]]]
-            if move.destiny[1] == "1":
-                casaDestino.primeiro = el
-            elif move.destiny[1] == "2":
-                casaDestino.segundo = el
-            elif move.destiny[1] == "3":
-                casaDestino.terceiro = el
-            else:
-                casaDestino.quarto = el
-            newCasas[mapCasa[move.destiny[0]]] = casaDestino
+        newCorredor, newCasas = makeMove(corredor,casas, move)
         moveTrace.append(move)
-        recursiveGame2(newCorredor, newCasas, score + move.distance, moveTrace)
+        recursiveGame2(newCorredor, newCasas, score + move.distance)
         moveTrace.pop()
     return
 
+@lru_cache(maxsize=None)
+def makeMove(corredor, casas, move):
+    newCorredor = list(dp(corredor))
+    newCasas = list(dp(casas))
+    if isinstance(move.origin, int):
+        el, newCorredor[move.origin] = newCorredor[move.origin], None
+        casa = newCasas[mapCasa[move.destiny[0]]]
+        if move.destiny[1] == "1":
+            casa.primeiro = el
+        elif move.destiny[1] == "2":
+            casa.segundo = el
+        elif move.destiny[1] == "3":
+            casa.terceiro = el
+        else:
+            casa.quarto = el
+        newCasas[mapCasa[move.destiny[0]]] = casa
+    elif isinstance(move.destiny, int):
+        casa = newCasas[mapCasa[move.origin[0]]]
+        if move.origin[1] == "1":
+            el, casa.primeiro = casa.primeiro, None
+        elif move.origin[1] == "2":
+            el, casa.segundo = casa.segundo, None
+        elif move.origin[1] == "3":
+            el, casa.terceiro = casa.terceiro, None
+        else:
+            el, casa.quarto = casa.quarto, None
+        newCorredor[move.destiny] = el
+        newCasas[mapCasa[move.origin[0]]] = casa
+    else:
+        casaOrigem = newCasas[mapCasa[move.origin[0]]]
+        if move.origin[1] == "1":
+            el, casaOrigem.primeiro = casaOrigem.primeiro, None
+        elif move.origin[1] == "2":
+            el, casaOrigem.segundo = casaOrigem.segundo, None
+        elif move.origin[1] == "3":
+            el, casaOrigem.terceiro = casaOrigem.terceiro, None
+        else:
+            el, casaOrigem.quarto = casaOrigem.quarto, None
+        newCasas[mapCasa[move.origin[0]]] = casaOrigem
+        casaDestino = newCasas[mapCasa[move.destiny[0]]]
+        if move.destiny[1] == "1":
+            casaDestino.primeiro = el
+        elif move.destiny[1] == "2":
+            casaDestino.segundo = el
+        elif move.destiny[1] == "3":
+            casaDestino.terceiro = el
+        else:
+            casaDestino.quarto = el
+        newCasas[mapCasa[move.destiny[0]]] = casaDestino
+    return tuple(newCorredor), tuple(newCasas)
 
+
+moveTrace = []
 def part2():
     global corredor, casas, minScore
     novaFileira = [["D", "C", "B", "A"], ["D", "B", "A", "C"]]
@@ -430,7 +444,7 @@ def part2():
     for idx, casa in enumerate(casas):
         novasCasas.append(novaCasa(casa.primeiro, novaFileira[0][idx], novaFileira[1][idx] ,casa.segundo))
 
-    recursiveGame2(corredor, novasCasas, 0, [])
+    recursiveGame2(tuple(corredor), tuple(novasCasas), 0)
     print(minScore)
 
 
