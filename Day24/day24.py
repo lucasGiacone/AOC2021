@@ -1,9 +1,5 @@
-from __future__ import print_function
 from alu import *
-from copy import deepcopy as dp
-from functools import lru_cache
-from math import ceil
-from multiprocessing import Process, process
+from multiprocessing import Process
 
 if True:
     Filename = "Day24/input.txt"
